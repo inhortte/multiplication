@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">multiplication</string>
     <string name="title_label">Multiplication Marten</string>
-    <string name="equation_label">Pine Martenish Equation</string>
+    <string name="equation_label">What\'s Happening?</string>
+    <string name="character_in_label">Letter?</string>
+    <string name="digit_in_label">Digit?</string>
+    <string name="guess_button_label">Guess</string>
 </resources>
