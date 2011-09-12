@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">multiplication</string>
+    <string name="title_label">Multiplication Marten</string>
+    <string name="equation_label">Pine Martenish Equation</string>
+</resources>
