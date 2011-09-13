@@ -15,16 +15,13 @@ import scala.util.Random
 import _root_.android.util.Log
 
 class MainActivity extends Activity {
-  private val random = new Random
-  private val neutralStati = List("You love it!",
-				  "Where is the minuta?",
-				  "What happened?")
-  private val yusStati = List("You got it!",
-			      "Hey! That was pine martenal.")
-  private val neStati = List("You fucked it up!",
-			     "You're a bad marten today.")
-  private val otro = ""
-  private var equation = new FormattedEquation
+  private val random		= new Random
+  private val res		= getResources
+  private val neutralStati	= res.getStringArray(R.array.neutral_stati)
+  private val yusStati		= res.getStringArray(R.array.yus_stati)
+  private val neStati		= res.getStringArray(R.array.ne_stati)
+  private val otro		= ""
+  private var equation		= new FormattedEquation
 
   override def onCreate(savedInstanceState: Bundle) {
     super.onCreate(savedInstanceState)
@@ -41,17 +38,7 @@ class MainActivity extends Activity {
   }
 
   def guessClick(target: View) = {
-    val char	= findViewById(R.id.characterGuess).asInstanceOf[TextView].getText.asInstanceOf[SpannableStringBuilder].toString match {
-      case s: String if s.size > 0	=> Some(s(0))
-      case _				=> None
-    }
-    // Log.i("guessClick", "The value of char is " + char.get)
-    val digit	= findViewById(R.id.digitGuess).asInstanceOf[TextView].getText.asInstanceOf[SpannableStringBuilder].toString match {
-      case s: String if s.size > 0	=> Some(s.toInt)
-      case _				=> None
-    }
-    // Log.i("guessClick", "The value of digit is " + digit)
-    val status = (char, digit) match {
+    val status = (getCharacterGuess, getDigitGuess) match {
       case Pair(Some(c: Char), Some(d: Int)) => equation.guess(c, d) match {
 	case Pair(c: Char, b: Boolean)	=> if (b) getNeutralStatus else getNeStatus
 	case Pair(c: Char, d: Int)	=> getYusStatus
@@ -59,7 +46,6 @@ class MainActivity extends Activity {
       }
       case _ => getNeutralStatus
     }
-    Log.i("guessClick", "The value of status is " + status)    
     setStatus(status)
     setEquationText
   }
@@ -68,6 +54,20 @@ class MainActivity extends Activity {
     findViewById(R.id.statusLabel).asInstanceOf[TextView].setText(status)
   private def setEquationText = 
     findViewById(R.id.equationText).asInstanceOf[TextView].setText(equation.formatted)
+
+  // These two methods return Some(String or Int) or None,
+  // depending on the parse.
+  private def getCharacterGuess: Option[Char] =
+    findViewById(R.id.characterGuess).asInstanceOf[TextView].getText.asInstanceOf[SpannableStringBuilder].toString match {
+      case s: String if s.size > 0	=> Some(s(0))
+      case _				=> None
+    }
+  private def getDigitGuess: Option[Int] =
+    findViewById(R.id.digitGuess).asInstanceOf[TextView].getText.asInstanceOf[SpannableStringBuilder].toString match {
+      case s: String if s.size > 0	=> Some(s.toInt)
+      case _				=> None
+    }
+
   private def getNeutralStatus = neutralStati(random.nextInt(neutralStati.size))
   private def getYusStatus = yusStati(random.nextInt(yusStati.size))
   private def getNeStatus = neStati(random.nextInt(neStati.size))

@@ -5,4 +5,23 @@
     <string name="character_in_label">Letter?</string>
     <string name="digit_in_label">Digit?</string>
     <string name="guess_button_label">Guess</string>
+    <string-array name="neutral_stati">
+      <item>You love it!</item>
+      <item>Where is the minuta?</item>
+      <item>What happened?</item>
+      <item>I\'m happy the way I AM!</item>
+      <item>Pattern!</item>
+    </string-array>
+    <string-array name="yus_stati">
+      <item>You got it!</item>
+      <item>Hey! That was pinemartenal.</item>
+      <item>Today, you\'re a good pine marten.</item>
+      <item>** SQUEAK!! **</item>
+    </string-array>
+    <string-array name="ne_stati">
+      <item>You fucked it up!</item>
+      <item>Today, you\'re a bad pine marten.</item>
+      <item>You must have a pink nose.</item>
+      <item>That wasn\'t it and you KNOW it.</time>
+    </string-array>
 </resources>
