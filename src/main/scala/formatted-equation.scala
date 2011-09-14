@@ -9,42 +9,12 @@ class FormattedEquation extends Equation {
 			   c.toString
 			 })
   }
-}
 
-/*
-object Game {
-  var equation = new FormattedEquation
-
-  def checkIt(c: Char, d: Int): Boolean = {
-    equation.guess(c, d) match {
-      case Pair(c: Char, b: Boolean) => if (b) {
-	println("You've already guessed that!")
-      } else {
-	println("Nope!")
-      }
-      case Pair(c: Char, i: Int) => println("Very good.")
-      case _ => println("Something malfunctioned.")
-    }
-    true
-  }
-
-  def start = {
-    while(true) {
-      println(equation.formatted)
-      print("Guess a letter and a number:")
-      readLine().trim.split(" ") match {
-	case Array(c: String, d: String) if (c(0) >= 65 && c(0) <= 90 && d(0) >= 48 && d(0) <= 57) => checkIt(c(0), d.toInt)
-	case _ => false
-      }
+  def arrayForGrid: java.util.ArrayList[String] = {
+    ("%6s".format(op1Veiled) + "%6s".format(op2Veiled) + "------" + "%6s".format(interm1Veiled) + "%6s".format(interm2Veiled + " ") + "------" + "%6s".format(resultVeiled)).toList.foldLeft(new java.util.ArrayList[String]) {
+      (acc, c) => acc.add(c.toString)
+      acc
     }
   }
 }
 
-object ConsoleGame {
-  def main(args: Array[String]) {
-    println("Here we go!")
-    val game = Game
-    game.start
-  }
-}
-*/
