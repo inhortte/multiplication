@@ -4,19 +4,20 @@ import _root_.android.app.Activity
 import _root_.android.os.Bundle
 import _root_.android.content.Context
 import _root_.android.view.ViewGroup.LayoutParams
-import _root_.android.view.View
-import _root_.android.widget.{TextView, GridView, Button, LinearLayout, ArrayAdapter, EditText, AdapterView}
-import _root_.android.view.View.OnClickListener
+import _root_.android.view.{View, KeyEvent}
+import _root_.android.widget.{TextView, GridView, Button, LinearLayout, ArrayAdapter, EditText, AdapterView, AutoCompleteTextView}
+import _root_.android.view.View.{OnClickListener, OnKeyListener}
 import _root_.android.widget.AdapterView.OnItemClickListener
-import _root_.android.text.SpannableStringBuilder
+import _root_.android.text.{SpannableStringBuilder, TextWatcher, Editable}
 import _root_.android.graphics.Typeface
 import _root_.android.util.TypedValue
 import scala.util.Random
 import _root_.android.util.Log
 
 class MainActivity extends Activity {
-  private val random		= new Random
-  private var equation		= new FormattedEquation
+  private val random	= new Random
+  private var equation	= new FormattedEquation
+  private var mistakes	= 0
 
   override def onCreate(savedInstanceState: Bundle) {
     super.onCreate(savedInstanceState)
@@ -26,19 +27,35 @@ class MainActivity extends Activity {
 
     setEquation
     setStatus(getNeutralStatus)
+    setListeners
+    setCompletions
+  }
 
+  private def setListeners = {
     findViewById(R.id.guessButton).asInstanceOf[Button].setOnClickListener(new OnClickListener() {
       def onClick(v: View) = guessClick(v)
     })
     findViewById(R.id.equationGrid).asInstanceOf[GridView].setOnItemClickListener(new OnItemClickListener() {
       def onItemClick(aView: AdapterView[_], target: View, position: Int, id: Long) = gridClick(target)
     })
+    List(R.id.characterGuess, R.id.digitGuess) foreach {
+      findViewById(_).asInstanceOf[EditText].addTextChangedListener(new TextWatcher() {
+	def afterTextChanged(t: Editable) = editableTextChanged(t)
+	def beforeTextChanged(c: CharSequence, start: Int, count: Int, after: Int) = { }
+	def onTextChanged(c: CharSequence, start: Int, before: Int, count: Int) = { }
+      })
+    }
   }
 
-  def guessClick(target: View) = {
+  private def guessClick(target: View) = {
     val status = (getCharacterGuess, getDigitGuess) match {
       case Pair(Some(c: Char), Some(d: Int)) => equation.guess(c, d) match {
-	case Pair(c: Char, b: Boolean)	=> if (b) getNeutralStatus else getNeStatus
+	case Pair(c: Char, b: Boolean)	=> if (b) {
+	  getNeutralStatus
+	} else {
+	  mistakes += 1
+	  getNeStatus
+	}
 	case Pair(c: Char, d: Int)	=> getYusStatus
 	case _				=> getNeutralStatus
       }
@@ -47,31 +64,47 @@ class MainActivity extends Activity {
     setStatus(status)
     clearFields
     setEquation
+    setCompletions
   }
 
-  def gridClick(target: View) = {
+  private def gridClick(target: View) = {
     val c = target.asInstanceOf[TextView].getText.toString
     if (c.size > 0 && c(0).isLetter)
       findViewById(R.id.characterGuess).asInstanceOf[EditText].setText(c)
   } 
 
+  // Only allow one character in the input fields.
+  private def editableTextChanged(t: Editable) = {
+    Log.i("editableTextChanged", "Replacing everything with the last char")
+    if (t.toString.size > 1) {
+      t.replace(0, t.toString.size - 1, "")
+    }
+  }
+
   private def setStatus(status: String) =
-    findViewById(R.id.statusLabel).asInstanceOf[TextView].setText(status)
+    findViewById(R.id.statusLabel).asInstanceOf[TextView].setText(status + "\n" + "[ " + mistakes + " mistakes ]")
 
   private def setEquation = {
-    Log.i("setEquation", "Initializing grid")
     val grid = findViewById(R.id.equationGrid).asInstanceOf[GridView]
-    Log.i("setEquation", "Initializing adapter")
     val adapter = new ArrayColorAdapter(this,
 					R.layout.grid_text_item,
 					equation.arrayForGrid).asInstanceOf[ArrayAdapter[String]]
-    Log.i("setEquation", "Setting adapter")
     grid.setAdapter(adapter)
-    Log.i("setEquation", "Adapter set")
   }
-  /*
-  private def setEquationText = 
-    findViewById(R.id.equationText).asInstanceOf[TextView].setText(equation.formatted) */
+
+  private def setCompletions = {
+    val digitGuess = findViewById(R.id.digitGuess).asInstanceOf[AutoCompleteTextView]
+    val characterGuess = findViewById(R.id.characterGuess).asInstanceOf[AutoCompleteTextView]
+
+    val digitAdapter = new ArrayAdapter(this,
+				   android.R.layout.simple_dropdown_item_1line,
+				   equation.remainingDigitsForCompletion).asInstanceOf[ArrayAdapter[String]]
+    val characterAdapter = new ArrayAdapter(this,
+					    android.R.layout.simple_dropdown_item_1line,
+					    equation.remainingCharactersForCompletion).asInstanceOf[ArrayAdapter[String]]
+    digitGuess.setAdapter(digitAdapter)
+    characterGuess.setAdapter(characterAdapter)
+  }
 
   // These two methods return Some(String or Int) or None,
   // depending on the parse.
@@ -82,8 +115,8 @@ class MainActivity extends Activity {
     }
   private def getDigitGuess: Option[Int] =
     findViewById(R.id.digitGuess).asInstanceOf[TextView].getText.asInstanceOf[SpannableStringBuilder].toString match {
-      case s: String if s.size > 0	=> Some(s.toInt)
-      case _				=> None
+      case s: String if s.size > 0 && s(0).isDigit	=> Some(s.toInt)
+      case _						=> None
     }
 
   private def clearFields = List(R.id.characterGuess, R.id.digitGuess) foreach {

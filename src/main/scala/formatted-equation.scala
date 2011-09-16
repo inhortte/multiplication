@@ -1,4 +1,5 @@
 package polaris.games.multiplication
+import java.util.ArrayList
 
 class FormattedEquation extends Equation {
   def formatted = 
@@ -10,11 +11,21 @@ class FormattedEquation extends Equation {
 			 })
   }
 
-  def arrayForGrid: java.util.ArrayList[String] = {
-    ("%6s".format(op1Veiled) + "%6s".format(op2Veiled) + "------" + "%6s".format(interm1Veiled) + "%6s".format(interm2Veiled + " ") + "------" + "%6s".format(resultVeiled)).toList.foldLeft(new java.util.ArrayList[String]) {
+  def arrayForGrid: ArrayList[String] = {
+    ("%6s".format(op1Veiled) + "%6s".format(op2Veiled) + "------" + "%6s".format(interm1Veiled) + "%6s".format(interm2Veiled + " ") + "------" + "%6s".format(resultVeiled)).toList.foldLeft(new ArrayList[String]) {
       (acc, c) => acc.add(c.toString)
       acc
     }
+  }
+
+  def remainingDigitsForCompletion: ArrayList[String] = remainingDigits.foldLeft(new ArrayList[String]) {
+    (acc, c) => acc.add(c.toString)
+    acc
+  }
+
+  def remainingCharactersForCompletion: ArrayList[String] = remainingCharacters.foldLeft(new ArrayList[String]) {
+    (acc, c) => acc.add(c.toString)
+    acc
   }
 }
 
