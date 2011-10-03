@@ -1,34 +1,69 @@
 package polaris.games.multiplication
 
-import _root_.android.app.Activity
+import _root_.android.app.{Activity, AlertDialog}
 import _root_.android.os.Bundle
 import _root_.android.content.Context
+import _root_.android.content.res.Configuration
 import _root_.android.view.ViewGroup.LayoutParams
-import _root_.android.view.{View, KeyEvent}
+import _root_.android.view.{View, KeyEvent, LayoutInflater, ViewGroup}
 import _root_.android.widget.{TextView, GridView, Button, LinearLayout, ArrayAdapter, EditText, AdapterView, AutoCompleteTextView}
 import _root_.android.view.View.{OnClickListener, OnKeyListener}
 import _root_.android.widget.AdapterView.OnItemClickListener
-import _root_.android.text.{SpannableStringBuilder, TextWatcher, Editable}
+import _root_.android.text.{SpannableStringBuilder, TextWatcher, Editable, InputType}
 import _root_.android.graphics.Typeface
 import _root_.android.util.TypedValue
 import scala.util.Random
 import _root_.android.util.Log
 
-class MainActivity extends Activity {
+class BeginActivity extends Activity {
+  val context				= getApplicationContext
+  lazy val inflater: LayoutInflater	= context.getSystemService(LAYOUT_INFLATER_SERVICE).asInstanceOf[LayoutInflater]
+  lazy val dialogView			= inflater.inflate(R.layout.name_prompt,
+					 findViewById(R.layout.begin).asInstanceOf[ViewGroup])
+  lazy val builder			= new AlertDialog.Builder(context)
+  lazy val npListener			= new NamePromptListener(dialogView)
+  
+
+  override def onCreate(savedInstanceState: Bundle) = {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.begin)
+
+    builder.setTitle("Multiplication!")
+    builder.setView(dialogView)
+    builder.setPositiveButton("Set", npListener)
+    builder.setNegativeButton("Ignore", npListener)
+
+    val dialog: AlertDialog = builder.create
+    dialog.show
+  }
+}
+
+class GameActivity extends Activity {
   private val random	= new Random
   private var equation	= new FormattedEquation
-  private var mistakes	= 0
+  private val player    = Player(getApplicationContext())
 
-  override def onCreate(savedInstanceState: Bundle) {
+  override def onCreate(savedInstanceState: Bundle) = {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.main)
 
-    Log.i("onCreate", "The content view has been set")
+    initializeUI
+  }
 
+  override def onConfigurationChanged(newConfig: Configuration) = {
+    super.onConfigurationChanged(newConfig)
+    setContentView(R.layout.main)
+    initializeUI
+  }
+
+  private def initializeUI = {
     setEquation
     setStatus(getNeutralStatus)
     setListeners
     setCompletions
+
+    findViewById(R.id.digitGuess).asInstanceOf[EditText].setInputType(InputType.TYPE_NULL)
+    findViewById(R.id.characterGuess).asInstanceOf[EditText].setInputType(InputType.TYPE_NULL)
   }
 
   private def setListeners = {
@@ -53,7 +88,7 @@ class MainActivity extends Activity {
 	case Pair(c: Char, b: Boolean)	=> if (b) {
 	  getNeutralStatus
 	} else {
-	  mistakes += 1
+	  player.mistake
 	  getNeStatus
 	}
 	case Pair(c: Char, d: Int)	=> getYusStatus
@@ -75,14 +110,13 @@ class MainActivity extends Activity {
 
   // Only allow one character in the input fields.
   private def editableTextChanged(t: Editable) = {
-    Log.i("editableTextChanged", "Replacing everything with the last char")
     if (t.toString.size > 1) {
       t.replace(0, t.toString.size - 1, "")
     }
   }
 
   private def setStatus(status: String) =
-    findViewById(R.id.statusLabel).asInstanceOf[TextView].setText(status + "\n" + "[ " + mistakes + " mistakes ]")
+    findViewById(R.id.statusLabel).asInstanceOf[TextView].setText(status + "\n" + "[ " + getResources.getQuantityString(R.plurals.mistakes, player.mistakes, player.mistakes.asInstanceOf[java.lang.Object]) + " ]")
 
   private def setEquation = {
     val grid = findViewById(R.id.equationGrid).asInstanceOf[GridView]
@@ -97,8 +131,8 @@ class MainActivity extends Activity {
     val characterGuess = findViewById(R.id.characterGuess).asInstanceOf[AutoCompleteTextView]
 
     val digitAdapter = new ArrayAdapter(this,
-				   android.R.layout.simple_dropdown_item_1line,
-				   equation.remainingDigitsForCompletion).asInstanceOf[ArrayAdapter[String]]
+					android.R.layout.simple_dropdown_item_1line,
+					equation.remainingDigitsForCompletion).asInstanceOf[ArrayAdapter[String]]
     val characterAdapter = new ArrayAdapter(this,
 					    android.R.layout.simple_dropdown_item_1line,
 					    equation.remainingCharactersForCompletion).asInstanceOf[ArrayAdapter[String]]

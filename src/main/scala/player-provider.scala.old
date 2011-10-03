@@ -1,0 +1,163 @@
+package polaris.games.multiplication
+
+import _root_.android.content.{ContentProvider, UriMatcher, Context, ContentValues}
+import _root_.android.provider.BaseColumns
+import _root_.android.net.Uri
+import scala.collection.immutable.HashMap
+import _root_.android.database.Cursor
+import _root_.android.database.sqlite.{SQLiteDatabase, SQLiteQueryBuilder}
+import _root_.android.util.Log
+
+object MultiplicationProviderMetaData {
+  val AUTHORITY: String		= "polaris.games.multiplication.MultiplicationProvider"
+  val DATABASE_NAME: String	= "multiplication.db"
+  val DATABASE_VERSION: Int	= 1
+  val PLAYER_TABLE_NAME: String	= "players"
+  val SCORE_TABLE_NAME: String = "scores"
+
+  object PlayerTableMetaData extends BaseColumns {
+    val TABLE_NAME: String = "player"
+    val CONTENT_URI: Uri = Uri.parse("content://" + AUTHORITY + "/players")
+    val CONTENT_TYPE: String = "vnd.android.cursor.dir/vnd.polaris.player"
+    val CONTENT_ITEM_TYPE: String = "vnd.android.cursor.item/vnd.polaris.player"
+    val DEFAULT_SORT_ORDER: String = "modified DESC"
+    val PLAYER_NAME: String = "name"
+    val PLAYER_CREATED: String = "created"
+    val PLAYER_MODIFIED: String = "modified"
+  }
+  object ScoreTableMetaData extends BaseColumns {
+    val TABLE_NAME: String = "score"
+    val CONTENT_URI: Uri = Uri.parse("content://" + AUTHORITY + "/scores")
+    val CONTENT_TYPE: String = "vnd.android.cursor.dir/vnd.polaris.score"
+    val CONTENT_ITEM_TYPE: String = "vnd.android.cursor.item/vnd.polaris.score"
+    val DEFAULT_SORT_ORDER: String = "modified DESC"
+    val SCORE_PLAYER_ID: String = "player_id"
+    val SCORE_TIME: String = "time"
+    val SCORE_MISTAKES: String = "mistakes"
+    val SCORE_CREATED: String = "created"
+    val SCORE_MODIFIED: String = "modified"
+  }
+}
+
+object MultiplicationProvider {
+  val TAG: String = "MultiplicationProvider"
+
+  // Projection maps
+  val playersProjMap = HashMap(
+    PlayerTableMetaData._ID -> PlayerTableMetaData._ID,
+    PlayerTableMetaData.PLAYER_NAME -> PlayerTableMetaData.PLAYER_NAME,
+    PlayerTableMetaData.PLAYER_CREATED -> PlayerTableMetaData.PLAYER_CREATED,
+    PlayerTableMetaData.PLAYER_MODIFIED -> PlayerTableMetaData.PLAYER_MODIFIED
+  )
+  val scoresProjMap = HashMap(
+    ScoreTableMetaData._ID -> ScoreTableMetaData._ID,
+    ScoreTableMetaData.SCORE_PLAYER_ID -> ScoreTableMetaData.SCORE_PLAYER_ID,
+    ScoreTableMetaData.SCORE_TIME -> ScoreTableMetaData.SCORE_TIME,
+    ScoreTableMetaData.SCORE_MISTAKES -> ScoreTableMetaData.SCORE_MISTAKES,
+    ScoreTableMetaData.SCORE_CREATED -> ScoreTableMetaData.SCORE_CREATED,
+    ScoreTableMetaData.SCORE_MODIFIED -> ScoreTableMetaData.SCORE_MODIFIED
+  )
+
+  // Uri patterns
+  val PLAYER_COLL	: Int	= 1
+  val SINGLE_PLAYER	: Int	= 2
+  val PLAYER_SCORES	: Int	= 3
+  val uriM = new UriMatcher(UriMatcher.NO_MATCH)
+  uriM.addURI(MultiplicationProviderMetaData.AUTHORITY
+	      , "players"
+	      , PLAYER_COLL)
+  uriM.addURI(MultiplicationProviderMetaData.AUTHORITY
+	      , "players/#"
+	      , SINGLE_PLAYER)
+  uriM.addURI(MultiplicationProviderMetaData.AUTHORITY
+	      , "players/#/scores"
+	      , PLAYER_SCORES)
+}
+
+class MultiplicationProvider extends ContentProvider {
+  class DBHelper(context: Context) extends SQLiteOpenHelper(context,MultiplicationProviderMetaData.DATABASE_NAME, null, MultiplicationProviderMetaData.DATABASE_VERSION) {
+    override def onCreate(db: SQLiteDatabase) = {
+      Log.i(MultiplicationProvider.TAG, "table creation begun")
+      db.execSQL("create table " + PlayerTableMetaData.TABLE_NAME + " (" +
+		 PlayerTableMetaData._ID + " integer primary key, " +
+		 PlayerTableMetaData.PLAYER_NAME + " text, " +
+		 PlayerTableMetaData.PLAYER_CREATED + " integer, " +
+		 PlayerTableMetaData.PLAYER_MODIFIED + " integer" +
+		 ");")
+      db.execSQL("create table " + ScoreTableMetaData.TABLE_NAME + " (" +
+		 ScoreTableMetaData._ID + " integer primary key, " +
+		 ScoreTableMetaData.SCORE_PLAYER_ID + " integer references player(_id) not null, " +
+		 ScoreTableMetaData.SCORE_TIME + " integer, " +
+		 ScoreTableMetaData.SCORE_MISTAKES + " integer, " +
+		 ScoreTableMetaData.SCORE_CREATED + " integer, " +
+		 ScoreTableMetaData.SCORE_MODIFIED + " integer" +
+		 ");")
+
+    }
+    override def onUpdate(db: SQLiteDatabase, oldVer: Int, newVer: Int) = {
+      Log.i(MultiplicationProvider.TAG, "updating the database")
+      Log.i(MultiplicationProvider.TAG, "version " + oldVer + " to " +
+	  newVer + " and all the previous data gets nuked in the process")
+      db.execSQL("drop table if exists " + PlayerTableMetaData.TABLE_NAME)
+      db.execSQL("drop table if exists " + ScoreTableMetaData.TABLE_NAME)
+      onCreate(db)
+    }
+  }
+  object DBHelper {
+    def apply(c: Context) = new DBHelper(c)
+  }
+
+  private lazy val dbHelper = {
+    Log.i(MultiplicationProvider.TAG, "dbHelper initialized")
+    DBHelper(getContext())
+  }
+
+  override def onCreate: Boolean = {
+    Log.i(MultiplicationProvider.TAG, "onCreate!")
+    true
+  }
+
+  override def query(uri: Uri, projection: List[String],
+		     selection: String, selectionArgs: List[String],
+		     sortOrder: String): Cursor = {
+    val qb = new SQLiteQueryBuilder
+    MultiplicationProvider.UriM.match(uri) match {
+      case MultiplicationProvider.PLAYER_COLL => {
+	qb.setTables(PlayerTableMetaData.TABLE_NAME)
+	qb.setProjectionMap(MultiplicationProvider.playersProjMap)
+      }
+      case MultiplicationProvider.SINGLE_PLAYER => {
+	qb.setTables(PlayerTableMetaData.TABLE_NAME)
+	qb.setProjectionMap(MultiplicationProvider.playersProjMap)
+	qb.appendWhere(PlayerTableMetaData._ID + "=" +
+		       uri.getPathSegments().get(1))
+      }
+      case MultiplicationProvider.PLAYER_SCORES => {
+	db.setTables(PlayerTableMetaData.TABLE_NAME + "," +
+		     ScoreTableMetaData.TABLE_NAME)
+	qb.appendWhere("scores.player_id=players.id and " +
+		       PlayerTableMetaData._ID + "=" +
+		       uri.getPathSegments().get(1))
+      }
+      case _ -> throw new IllegalArgumentException("URI fucked: " + uri)
+    }
+    val orderBy = if (sortOrder.isEmpty) PlayerTableMetaData.DEFAULT_SORT_ORDER
+		  else sortOrder
+    val db: SQLiteDatabase = dbHelper.getReadableDatabase
+    val c: Cursor = qb.query(db, projection, selection, selectionArgs,
+			     null, null, orderBy)
+    c.setNotificationUri(getContext().getContentResolver(), uri)
+    c
+  }
+
+  override def getType(uri: Uri): String = MultiplicationProvider.UriM.match(uri) match {
+    case MultiplicationProvider.PLAYER_COLL => PlayerTableMetaData.CONTENT_TYPE
+    case MultiplicationProvider.SINGLE_PLAYER => PlayerTableMetaData.CONTENT_ITEM_TYPE
+    case MultiplicationProvider.PLAYER_SCORES => ScoreTableMetaData.CONTENT_TYPE
+    case _ -> throw new IllegalArgumentException("URI fucked: " + uri)
+  }
+
+  override def insert(uri: Uri, values: ContentValues): Uri = {
+    
+  }
+}

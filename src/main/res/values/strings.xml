@@ -5,6 +5,7 @@
     <string name="character_in_label">Letter?</string>
     <string name="digit_in_label">Digit?</string>
     <string name="guess_button_label">Guess</string>
+    <string name="name_prompt_message">What is your mustelidish name?</string>
     <string-array name="neutral_stati">
       <item>You love it!</item>
       <item>Where is the minuta?</item>
@@ -24,4 +25,8 @@
       <item>You must have a pink nose.</item>
       <item>That wasn\'t it and you KNOW it.</item>
     </string-array>
+    <plurals name="mistakes">
+      <item quantity="one">1 mistake</item>
+      <item quantity="other">%d mistakes</item>
+    </plurals>
 </resources>

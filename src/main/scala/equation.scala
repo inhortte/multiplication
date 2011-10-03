@@ -48,16 +48,20 @@ class Equation {
     }
   }
 
-  def remainingDigits: List[Int] = digitsDiscovered.filter {
-    case Pair(_, false) => true
-  }.foldLeft(List[Int]()) {
-    (acc, p) => p match {
-      case Pair(d, _) => dcm.get(d).get.asInstanceOf[Int] :: acc
-    }
-  }
+  // At first I just coded this to return the digits left from
+  // the set of digits in the puzzle, but quickly realized that
+  // was silly because it would give away which digits are actually
+  // used it the puzzle, so, instead, the difference of the set of
+  // all digits (0..9) and the discovered digits is used.
+  def remainingDigits: List[Int] =
+    (0 to 9).toList.diff(digitsDiscovered.filter {
+      c => c._2
+    }.map {
+      c => dcm.get(c._1).get
+    }.toList)
 
   def remainingCharacters: List[Char] = digitsDiscovered.filter {
-    case Pair(_, false) => true
+    c => !c._2
   }.map {
     case Pair(d, _) => d
   }.asInstanceOf[List[Char]]
