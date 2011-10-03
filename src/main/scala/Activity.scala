@@ -2,7 +2,7 @@ package polaris.games.multiplication
 
 import _root_.android.app.{Activity, AlertDialog}
 import _root_.android.os.Bundle
-import _root_.android.content.Context
+import _root_.android.content.{Context, Intent}
 import _root_.android.content.res.Configuration
 import _root_.android.view.ViewGroup.LayoutParams
 import _root_.android.view.{View, KeyEvent, LayoutInflater, ViewGroup}
@@ -16,18 +16,18 @@ import scala.util.Random
 import _root_.android.util.Log
 
 class BeginActivity extends Activity {
-  val context				= getApplicationContext
-  lazy val inflater: LayoutInflater	= context.getSystemService(LAYOUT_INFLATER_SERVICE).asInstanceOf[LayoutInflater]
-  lazy val dialogView			= inflater.inflate(R.layout.name_prompt,
-					 findViewById(R.layout.begin).asInstanceOf[ViewGroup])
-  lazy val builder			= new AlertDialog.Builder(context)
-  lazy val npListener			= new NamePromptListener(dialogView)
-  
+  val context				= BeginActivity.this
 
   override def onCreate(savedInstanceState: Bundle) = {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.begin)
 
+    lazy val inflater: LayoutInflater	= context.getSystemService(Context.LAYOUT_INFLATER_SERVICE).asInstanceOf[LayoutInflater]
+    lazy val dialogView			= inflater.inflate(R.layout.name_prompt,
+							   findViewById(R.layout.begin).asInstanceOf[ViewGroup])
+    lazy val builder			= new AlertDialog.Builder(context)
+    lazy val npListener			= new NamePromptListener(dialogView, this)
+  
     builder.setTitle("Multiplication!")
     builder.setView(dialogView)
     builder.setPositiveButton("Set", npListener)
@@ -36,16 +36,29 @@ class BeginActivity extends Activity {
     val dialog: AlertDialog = builder.create
     dialog.show
   }
+
+  def goToGame(playerName: String) = {
+    Log.i("goToGame", "dialog result = " + playerName)
+    val intent = new Intent(context, classOf[GameActivity])
+    intent.putExtra("player_name", playerName)
+    startActivity(intent)
+  }
 }
 
 class GameActivity extends Activity {
   private val random	= new Random
   private var equation	= new FormattedEquation
-  private val player    = Player(getApplicationContext())
+  private val player    = Player(GameActivity.this)
 
   override def onCreate(savedInstanceState: Bundle) = {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.main)
+
+    // The player_name will always be there, actually.
+    val extras: Bundle = getIntent.getExtras
+    player.setName(if (extras != null) extras.getString("player_name")
+		   else "")
+    player.newGame
 
     initializeUI
   }

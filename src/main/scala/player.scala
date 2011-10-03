@@ -5,24 +5,26 @@ import _root_.android.util.Log
 import _root_.android.database.Cursor
 import _root_.android.database.sqlite.{SQLiteDatabase, SQLiteOpenHelper}
 
-class DBHelper(context: Context, val dbName: String = "multiplicationDB") extends SQLiteOpenHelper(context, dbName, null, 1) {
+class DBHelper(context: Context, val dbName: String = "multiplicationDB.db") extends SQLiteOpenHelper(context, dbName, null, 1) {
 
   // These should probably be elsewhere (metadata?).
   val playerTable: String = "players"
-  val playerId: String = "id"
+  val playerId: String = "_id"
   val playerName: String = "name"
   val scoreTable: String = "scores"
-  val scoreId: String = "id"
+  val scoreId: String = "_id"
   val scorePlayerId: String = "player_id"
   val scoreTime: String = "time"
   val scoreMistakes: String = "mistakes"
   val scoreTimestamp: String = "timestamp"
+
+  val playerCols = Array(playerName)
   
   override def onCreate(db: SQLiteDatabase) = {
     Log.i("onCreate", "creating players table")
     db.execSQL("create table " + playerTable + " (" +
                playerId + " integer primary key, " +
-               playerName + " text, " +
+               playerName + " text" +
                ");")
     Log.i("onCreate", "creating scores table")
     db.execSQL("create table " + scoreTable + " (" +
@@ -42,6 +44,12 @@ class DBHelper(context: Context, val dbName: String = "multiplicationDB") extend
     onCreate(db)
   }
 
+  def findOrCreatePlayer(name: String) = {
+    val rDb: SQLiteDatabase = this.getReadableDatabase
+    val c: Cursor = rDb.query(playerTable, playerCols, playerName + " = ?", Array(name), null, null, null)
+    if (c.getCount < 1) addPlayer(name)
+  }
+
   def addPlayer(name: String) = {
     val db: SQLiteDatabase = this.getWritableDatabase
     val cv = new ContentValues
@@ -58,10 +66,9 @@ class DBHelper(context: Context, val dbName: String = "multiplicationDB") extend
   }
 
   def findAllNames: List[String] = {
-    val db: SQLiteDatabase = this.getReadableDatabase
-    val cols: Array[String] = Array(playerName)
+    val rDb: SQLiteDatabase = this.getReadableDatabase
     val order: String = playerName + " asc"
-    val c: Cursor = db.query(playerTable, cols, null, null, null, null, order)
+    val c: Cursor = rDb.query(playerTable, playerCols, null, null, null, null, order)
     if (c.getCount > 0) {
       var names: List[String] = List()
       do {
@@ -79,12 +86,20 @@ object DBHelper {
 class Player(context: Context) {
   lazy val dbHelper = DBHelper(context)
   
-  var name = "nikdo"
-  var mistakes = 0
-  private var gamesPlayed = 0
+  private var _name: String = "nikdo"
+  var mistakes: Int = 0
+  private var gamesPlayed: Int = 0
 
   def mistake = mistakes += 1
-  def newGame = gamesPlayed += 1
+  def newGame = {
+    gamesPlayed += 1
+  }
+
+  def name: String = _name
+  def setName(n: String) = {
+    dbHelper.findOrCreatePlayer(n.toLowerCase)
+    _name = n.toLowerCase
+  }
 
   def getPlayerNames: List[String] =  dbHelper.findAllNames
 }
