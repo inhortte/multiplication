@@ -4,6 +4,7 @@ import _root_.android.content.{Context, ContentValues}
 import _root_.android.util.Log
 import _root_.android.database.Cursor
 import _root_.android.database.sqlite.{SQLiteDatabase, SQLiteOpenHelper}
+import java.util.Date
 
 class DBHelper(context: Context, val dbName: String = "multiplicationDB.db") extends SQLiteOpenHelper(context, dbName, null, 1) {
 
@@ -34,6 +35,7 @@ class DBHelper(context: Context, val dbName: String = "multiplicationDB.db") ext
                scoreMistakes + " integer, " +
                scoreTimestamp + " integer" +
                ");")
+    db.close
   }
   override def onUpgrade(db: SQLiteDatabase, oldVer: Int, newVer: Int) = {
     Log.i("onUpdate", "updating the database")
@@ -44,38 +46,74 @@ class DBHelper(context: Context, val dbName: String = "multiplicationDB.db") ext
     onCreate(db)
   }
 
-  def findOrCreatePlayer(name: String) = {
+  def findOrCreatePlayer(name: String): Long = {
     val rDb: SQLiteDatabase = this.getReadableDatabase
     val c: Cursor = rDb.query(playerTable, playerCols, playerName + " = ?", Array(name), null, null, null)
-    if (c.getCount < 1) addPlayer(name)
+    if (c.getCount < 1) {
+      c.close
+      // rDb.close
+      addPlayer(name)
+    } else { 
+      val id = c.getLong(c.getColumnIndex(playerId))
+      c.close
+      // rDb.close
+      id
+    }
   }
 
-  def addPlayer(name: String) = {
+  def addPlayer(name: String): Long = {
     val db: SQLiteDatabase = this.getWritableDatabase
     val cv = new ContentValues
     cv.put(playerName, name)
-    db.insert(playerTable, null, cv)
+    val id = db.insert(playerTable, null, cv)
     db.close
+    id
   }
 
   def renamePlayer(oldName: String, newName: String): Int = {
     val db: SQLiteDatabase = this.getWritableDatabase
     val cv = new ContentValues
     cv.put(playerName, newName)
-    db.update(playerTable, cv, playerName + " = ?", Array(oldName))
+    val res = db.update(playerTable, cv, playerName + " = ?", Array(oldName))
+    db.close
+    res
   }
 
-  def findAllNames: List[String] = {
+  def newScore(p: Player) = {
+    val db: SQLiteDatabase = this.getWritableDatabase
+    val cv = new ContentValues
+    cv.put(scorePlayerId, p.id.asInstanceOf[java.lang.Long])
+    cv.put(scoreTime, p.elapsed.asInstanceOf[java.lang.Long])
+    cv.put(scoreMistakes, p.mistakes.asInstanceOf[java.lang.Long])
+    cv.put(scoreTimestamp, ((new Date).getTime).asInstanceOf[java.lang.Long])
+    db.insert(scoreTable, null, cv)
+    db.close
+  }
+
+  // I have encountered strange problems with this method.
+  // Look at how I isolated 'index' instead of just doing
+  // c.getString(c.getColumnName(playerName). I was being told
+  // that the index was -1. I cannot verify, but suppose that getCount
+  // is not returning the correct value.
+  def findAllNames: Array[String] = {
     val rDb: SQLiteDatabase = this.getReadableDatabase
     val order: String = playerName + " asc"
     val c: Cursor = rDb.query(playerTable, playerCols, null, null, null, null, order)
-    if (c.getCount > 0) {
+    c.moveToFirst
+    val res: Array[String] = if (c.getCount > 0) {
       var names: List[String] = List()
+      var index = -1
       do {
-	names ::= c.getString(c.getColumnIndex(playerName))
-      } while (c.moveToNext)
-      names
-    } else List[String]()
+	index = c.getColumnIndex(playerName)
+	Log.i("findAllNames", "index = " + index)
+	if (index != -1)
+	  names ::= c.getString(index)
+      } while (c.moveToNext && index != -1)
+      names.toArray
+    } else Array[String]()
+    c.close
+    // rDb.close
+    res
   }
 }
 
@@ -86,22 +124,45 @@ object DBHelper {
 class Player(context: Context) {
   lazy val dbHelper = DBHelper(context)
   
-  private var _name: String = "nikdo"
-  var mistakes: Int = 0
-  private var gamesPlayed: Int = 0
+  private var _name: String	= "nikdo"
+  private var _id: Long		= 0
+  var mistakes: Int		= 0
+  var hints: Int = 0
+  var elapsed: Long		= 0
+  private var saveable		= true
+  private var startTime: Long	= (new Date).getTime
+  private var endTime: Long	= (new Date).getTime
+  private var gamesPlayed: Int	= 0
 
   def mistake = mistakes += 1
+  def hint = hints += 1
   def newGame = {
     gamesPlayed += 1
+    mistakes = 0
+    hints = 0
+    startTime = (new Date).getTime
+    elapsed = 0
+    saveable = true
   }
+  def unsaveable = saveable = false
 
+  def id: Long = _id
   def name: String = _name
   def setName(n: String) = {
-    dbHelper.findOrCreatePlayer(n.toLowerCase)
+    _id = dbHelper.findOrCreatePlayer(n.toLowerCase)
     _name = n.toLowerCase
   }
 
-  def getPlayerNames: List[String] =  dbHelper.findAllNames
+  // Solved gets called when a game is finished. The number of
+  // seconds is passed in.
+  def solved = {
+    endTime = (new Date).getTime
+    elapsed = (endTime - startTime) / 1000
+    // Save the score only if this is a real player.
+    if (name != "nikdo" && name != "" && saveable) dbHelper.newScore(this)
+  }
+
+  def getPlayerNames: Array[String] =  dbHelper.findAllNames
 }
 
 object Player {

@@ -20,6 +20,7 @@
       android:layout_marginRight="20dip"
       android:scrollHorizontally="true"
       android:gravity="fill_horizontal"
+      android:completionThreshold="1"
       android:capitalize="none"
       android:textAppearance="?android:attr/textAppearanceMedium" />
 </LinearLayout>

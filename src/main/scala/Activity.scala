@@ -5,7 +5,7 @@ import _root_.android.os.Bundle
 import _root_.android.content.{Context, Intent}
 import _root_.android.content.res.Configuration
 import _root_.android.view.ViewGroup.LayoutParams
-import _root_.android.view.{View, KeyEvent, LayoutInflater, ViewGroup}
+import _root_.android.view.{View, KeyEvent, LayoutInflater, ViewGroup, Menu, MenuInflater, MenuItem}
 import _root_.android.widget.{TextView, GridView, Button, LinearLayout, ArrayAdapter, EditText, AdapterView, AutoCompleteTextView}
 import _root_.android.view.View.{OnClickListener, OnKeyListener}
 import _root_.android.widget.AdapterView.OnItemClickListener
@@ -27,6 +27,10 @@ class BeginActivity extends Activity {
 							   findViewById(R.layout.begin).asInstanceOf[ViewGroup])
     lazy val builder			= new AlertDialog.Builder(context)
     lazy val npListener			= new NamePromptListener(dialogView, this)
+
+    val namePrompt = dialogView.findViewById(R.id.namePrompt).asInstanceOf[AutoCompleteTextView]
+    val completions = new ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, (new Player(this)).getPlayerNames)
+    namePrompt.setAdapter(completions)
   
     builder.setTitle("Multiplication!")
     builder.setView(dialogView)
@@ -69,7 +73,46 @@ class GameActivity extends Activity {
     initializeUI
   }
 
+  override def onCreateOptionsMenu(menu: Menu): Boolean = {
+    val inflater: MenuInflater = getMenuInflater
+    inflater.inflate(R.menu.game_menu, menu)
+    true
+  }
+
+  override def onOptionsItemSelected(item: MenuItem) = {
+    item.getItemId match {
+      case R.id.menu_restartGame => {
+	equation = new FormattedEquation
+	player.newGame
+	refreshDisplay()
+      }
+      case R.id.menu_myScores => { }
+      case R.id.menu_allScores => { }
+      case R.id.menu_hint => {
+	equation.hint
+	player.hint
+	refreshDisplay()
+      }
+      case R.id.menu_solve => {
+	equation.solve
+	player.unsaveable
+	refreshDisplay()
+      }
+      case R.id.menu_quit => this.finish
+      case _ => { }
+    } 
+    false
+  }
+
+  private def refreshDisplay(status: String = getNeutralStatus) = {
+    setStatus(status)
+    clearFields
+    setEquation
+    setCompletions
+  }
+
   private def initializeUI = {
+    findViewById(R.id.title).asInstanceOf[TextView].setText("You are " + player.name.capitalize)
     setEquation
     setStatus(getNeutralStatus)
     setListeners
@@ -104,15 +147,17 @@ class GameActivity extends Activity {
 	  player.mistake
 	  getNeStatus
 	}
-	case Pair(c: Char, d: Int)	=> getYusStatus
+	case Pair(c: Char, d: Int)	=> {
+	  if (equation.solved) {
+	    player.solved
+	    getNeutralStatus
+	  } else getYusStatus
+	}
 	case _				=> getNeutralStatus
       }
       case _ => getNeutralStatus
     }
-    setStatus(status)
-    clearFields
-    setEquation
-    setCompletions
+    refreshDisplay(status)
   }
 
   private def gridClick(target: View) = {
@@ -129,7 +174,7 @@ class GameActivity extends Activity {
   }
 
   private def setStatus(status: String) =
-    findViewById(R.id.statusLabel).asInstanceOf[TextView].setText(status + "\n" + "[ " + getResources.getQuantityString(R.plurals.mistakes, player.mistakes, player.mistakes.asInstanceOf[java.lang.Object]) + " ]")
+    findViewById(R.id.statusLabel).asInstanceOf[TextView].setText(status + "\n" + "[ " + getResources.getQuantityString(R.plurals.mistakes, player.mistakes, player.mistakes.asInstanceOf[java.lang.Object]) + " ]\n" + "[ " + getResources.getQuantityString(R.plurals.hints, player.hints, player.hints.asInstanceOf[java.lang.Object]) + " ]")
 
   private def setEquation = {
     val grid = findViewById(R.id.equationGrid).asInstanceOf[GridView]

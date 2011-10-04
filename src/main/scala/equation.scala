@@ -5,8 +5,6 @@ import java.util.Date
 class Equation {
   private val random		= new Random
   private val dcm		= new DigitCharMap
-  private val start_time	= (new Date).getTime
-  private var end_time		= (new Date).getTime
 
   // The first operend is three digits
   val op1 = random.nextInt(900) + 100
@@ -41,11 +39,16 @@ class Equation {
       Pair(c, true)
     } else if (dcm.get(c).get == i) {
       digitsDiscovered = digitsDiscovered.updated(c, true)
-      if (solved) end_time = (new Date).getTime
+      // if (solved) end_time = (new Date).getTime
       Pair(c, i)
     } else {
       Pair(c, false)
     }
+  }
+
+  def hint = {
+    val char = remainingCharacters(random.nextInt(remainingCharacters.size))
+    guess(char, dcm.get(char).get.asInstanceOf[Int])
   }
 
   // At first I just coded this to return the digits left from
@@ -67,7 +70,7 @@ class Equation {
   }.asInstanceOf[List[Char]]
 
   def solve = if (!solved) {
-    end_time = (new Date).getTime
+    // end_time = (new Date).getTime
     digitsDiscovered = digitsDiscovered map {
       case Pair(c, _) => Pair(c, true)
     }
@@ -76,9 +79,6 @@ class Equation {
   def solved: Boolean = digitsDiscovered.foldLeft(true) {
     (acc, c) => acc && c._2
   }
-
-  def elapsed: Long = if (solved) (end_time - start_time) / 1000
-		      else ((new Date).getTime - start_time) / 1000
 
   override def toString() = {
     "%5s".format(op1Veiled) + "\n" + "%5s".format(op2Veiled) + "\n----------\n" + "%5s".format(interm1Veiled) + "\n" + "%5s".format(interm2Veiled + " ") + "\n----------\n" + "%5s".format(resultVeiled)
